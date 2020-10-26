@@ -1,0 +1,15 @@
+<div class="display-container">
+  <div class="grid-container" *ngIf="grid$ | async as grid">
+    <div class="row" *ngFor="let row of grid">
+      <div class="square" *ngFor="let square of row" [style.background-color]="square">
+      </div>
+    </div>
+  </div>
+  <div class="grid-container next-piece">
+    <div class="row" *ngFor="let row of nextPieceGrid$ | async">
+      <div class="square" *ngFor="let square of row" [style.background-color]="square">
+      </div>
+    </div>
+    <div><b>{{points$ | async | number}}</b></div>
+  </div>
+</div>
