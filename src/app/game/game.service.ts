@@ -2,14 +2,18 @@ import {Injectable} from '@angular/core';
 import {GridSquare} from './grid-square';
 import {Grid} from './grid';
 import {PieceRendererService} from './piece-renderer.service';
-import {BehaviorSubject, ReplaySubject} from 'rxjs';
+import {BehaviorSubject, interval, merge, Observable, Subject} from 'rxjs';
 import {Router} from '@angular/router';
+import {map, takeUntil} from 'rxjs/operators';
 
 @Injectable({
   providedIn: 'root'
 })
 export class GameService {
-  private interval: any;
+
+  private interval$: Observable<number>;
+
+  private stop$ = new Subject<void>();
 
   private static POSSIBLE_PIECES = [
     GridSquare.O,
@@ -25,18 +29,20 @@ export class GameService {
 
   private _dynamicGrid = new Grid();
 
-  public display$ = new ReplaySubject<GridSquare[][]>();
+  public display$: Observable<GridSquare[][]>;
 
   public points$ = new BehaviorSubject(0);
 
   public piece: GridSquare;
+
+  private refresh$ = new Subject<void>();
 
   public pieceCoords = {
     x: 4,
     y: 0
   };
 
-  public pieceRotation: number = 0;
+  public pieceRotation = 0;
 
   public nextPiece$ = new BehaviorSubject<GridSquare>(this.getRandomPiece());
 
@@ -51,28 +57,28 @@ export class GameService {
     if (this.pieceCoords.x < 0 || this.pieceCoords.x + pieceRender[0].length > 10) {
       this.pieceCoords.x = backup;
     }
-    this.tick(true);
+    this.refresh$.next();
   }
 
   public crash(): void {
     this.pieceCoords.y++;
-    this.tick(true);
+    this.refresh$.next();
   }
 
-  private tick(fromInput = false): void {
+  private tick(fromInput): GridSquare[][] {
     const previousDynamicGrid = new Grid().merge(this._dynamicGrid);
     try {
       if (!fromInput) {
         this.pieceCoords.y++;
       }
       this.renderPieceInDynamicGrid();
-      this.display$.next(this._staticGrid.merge(this._dynamicGrid).grid);
+      return this._staticGrid.merge(this._dynamicGrid).grid;
     } catch (e) {
       console.error(e);
       try {
         if (fromInput) {
           this._dynamicGrid = previousDynamicGrid;
-          this.display$.next(this._staticGrid.merge(this._dynamicGrid).grid);
+          return this._staticGrid.merge(this._dynamicGrid).grid;
         }
         this._staticGrid = this._staticGrid.merge(previousDynamicGrid);
         this.pieceCoords = {
@@ -81,8 +87,7 @@ export class GameService {
         };
         this.generateNextPiece();
       } catch (_) {
-        clearInterval(this.interval);
-        delete this.interval;
+        this.stop();
         alert('Game Over');
         this._staticGrid = new Grid();
         this.router.navigateByUrl('/');
@@ -114,10 +119,18 @@ export class GameService {
     return GameService.POSSIBLE_PIECES[Math.floor(Math.random() * GameService.POSSIBLE_PIECES.length)];
   }
 
+  public stop(): void {
+    this.stop$.next();
+  }
+
   public start(): void {
-    this.interval = setInterval(() => {
-      this.tick();
-    }, 1000);
-    this.tick();
+    this.interval$ = interval(1000).pipe(
+      takeUntil(this.stop$)
+    );
+    this.display$ = merge(this.interval$, this.refresh$).pipe(
+      map((value) => {
+        return this.tick(value === undefined);
+      })
+    );
   }
 }

@@ -123,6 +123,10 @@
           }
         }
       }
-    }},
-  "defaultProject": "IMTetris"
+    }
+  },
+  "defaultProject": "IMTetris",
+  "cli": {
+    "analytics": false
+  }
 }

@@ -12,7 +12,7 @@ import {map} from 'rxjs/operators';
 })
 export class TetrisComponent implements OnInit {
 
-  public grid$ = this.gameService.display$;
+  public grid$: Observable<GridSquare[][]>;
 
   public nextPieceGrid$: Observable<GridSquare[][]> = this.gameService.nextPiece$.pipe(
     map(piece => {
@@ -27,6 +27,7 @@ export class TetrisComponent implements OnInit {
 
   ngOnInit(): void {
     this.gameService.start();
+    this.grid$ = this.gameService.display$;
   }
 
 }
